@@ -1,0 +1,11 @@
+ned
+*.exe
+*.o
+
+# Test files
+/test/*.red
+/test/*.ed
+/test/*.o
+/test/*.z
+/test/ascii.d
+/test/ascii.r
