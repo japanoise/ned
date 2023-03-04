@@ -91,7 +91,7 @@ extract_subst_template(void)
 		else if ((rhbuf[i++] = *ibufp++) != '\n')
 			;
 		else if (!isglobal) {
-			while ((n = get_tty_line()) == 0 ||
+			while ((n = get_tty_line("")) == 0 ||
 			    (n > 0 && ibuf[n - 1] != '\n'))
 				clearerr(stdin);
 			if (n < 0)

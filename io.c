@@ -25,9 +25,12 @@
  * SUCH DAMAGE.
  */
 
+#include <signal.h>
 #include <sys/cdefs.h>
+#include <unistd.h>
 
 #include "ed.h"
+#include "linenoise.h"
 
 /* read_file: read a named file/pipe into the buffer; return line count */
 long
@@ -98,7 +101,7 @@ read_stream(FILE *fp, long n)
 	else if (newline_added && (!appended || (!isbinary && !o_isbinary)))
 		fputs("newline appended\n", stderr);
 	if (isbinary && newline_added && !appended)
-	    	size += 1;
+		size += 1;
 	if (!size)
 		newline_added = 1;
 	newline_added = appended ? newline_added : o_newline_added;
@@ -221,10 +224,10 @@ get_extended_line(int *sizep, int nonl)
 	*sizep = -1;
 	REALLOC(cvbuf, cvbufsz, l, NULL);
 	memcpy(cvbuf, ibufp, l);
-	*(cvbuf + --l - 1) = '\n'; 	/* strip trailing esc */
-	if (nonl) l--; 			/* strip newline */
+	*(cvbuf + --l - 1) = '\n';	/* strip trailing esc */
+	if (nonl) l--;			/* strip newline */
 	for (;;) {
-		if ((n = get_tty_line()) < 0)
+		if ((n = get_tty_line("")) < 0)
 			return NULL;
 		else if (n == 0 || ibuf[n - 1] != '\n') {
 			errmsg = "unexpected end-of-file";
@@ -235,8 +238,8 @@ get_extended_line(int *sizep, int nonl)
 		l += n;
 		if (n < 2 || !has_trailing_escape(cvbuf, cvbuf + l - 1))
 			break;
-		*(cvbuf + --l - 1) = '\n'; 	/* strip trailing esc */
-		if (nonl) l--; 			/* strip newline */
+		*(cvbuf + --l - 1) = '\n';	/* strip trailing esc */
+		if (nonl) l--;			/* strip newline */
 	}
 	REALLOC(cvbuf, cvbufsz, l + 1, NULL);
 	cvbuf[l] = '\0';
@@ -247,8 +250,44 @@ get_extended_line(int *sizep, int nonl)
 
 /* get_tty_line: read a line of text from stdin; return line length */
 int
-get_tty_line(void)
+get_tty_line(const char *prompt)
 {
+	int i = 0;
+
+	/* Use linenoise if we're a tty (i.e. interactive) */
+	if (istty) {
+		char * lnstr = linenoise(prompt, &i);
+		REALLOC(ibuf, ibufsz, i + 2, ERR);
+		if (lnstr == NULL) {
+			if (i == LINENOISE_CTRLC) {
+				/* ^C pressed; send an interrupt */
+				ibufp = NULL;
+				raise(SIGINT);
+				return 0;
+			} else if (i == LINENOISE_CTRLD) {
+				/* ^D pressed; send EOF */
+				clearerr(stdin);
+				return 0;
+			}
+
+			fprintf(stderr, "stdin: %s\n", strerror(errno));
+			errmsg = "cannot read stdin";
+			clearerr(stdin);
+			ibufp = NULL;
+			return ERR;
+		}
+		strcpy(ibuf, lnstr);
+		free(lnstr);
+		ibufp = ibuf;
+		lineno++;
+		return i;
+	}
+
+	/* Otherwise, legacy input is fine */
+	return get_tty_line_dumb();
+}
+
+int get_tty_line_dumb() {
 	int oi = 0;
 	int i = 0;
 	int c;
@@ -285,8 +324,6 @@ get_tty_line(void)
 		}
 }
 
-
-
 #define ESCAPES "\a\b\f\n\r\t\v\\"
 #define ESCCHARS "abfnrtv\\"
 
@@ -311,8 +348,13 @@ put_tty_line(const char *s, int l, long n, int gflag)
 				lc = 0;
 				fputs("Press <RETURN> to continue... ", stdout);
 				fflush(stdout);
-				if (get_tty_line() < 0)
-					return ERR;
+				for(;;) {
+					int c = getchar();
+					if (c == EOF)
+						return ERR;
+					if (c == '\n')
+						break;
+				}
 			}
 #endif
 		}

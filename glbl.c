@@ -98,7 +98,7 @@ exec_global(int interact, int gflag)
 			/* print current_addr; get a command in global syntax */
 			if (display_lines(current_addr, current_addr, gflag) < 0)
 				return ERR;
-			while ((n = get_tty_line()) > 0 &&
+			while ((n = get_tty_line("")) > 0 &&
 			    ibuf[n - 1] != '\n')
 				clearerr(stdin);
 			if (n < 0)
@@ -106,16 +106,16 @@ exec_global(int interact, int gflag)
 			else if (n == 0) {
 				errmsg = "unexpected end-of-file";
 				return ERR;
-			} else if (n == 1 && !strcmp(ibuf, "\n"))
+			} else if (n == 1 && !strcmp(ibuf, "\n")) {
 				continue;
-			else if (n == 2 && !strcmp(ibuf, "&\n")) {
+			} else if (n == 2 && !strcmp(ibuf, "&\n")) {
 				if (cmd == NULL) {
 					errmsg = "no previous command";
 					return ERR;
 				} else cmd = ocmd;
-			} else if ((cmd = get_extended_line(&n, 0)) == NULL)
+			} else if ((cmd = get_extended_line(&n, 0)) == NULL) {
 				return ERR;
-			else {
+			} else {
 				REALLOC(ocmd, ocmdsz, n + 1, ERR);
 				memcpy(ocmd, cmd, n + 1);
 				cmd = ocmd;

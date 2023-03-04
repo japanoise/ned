@@ -211,7 +211,8 @@ long get_marked_node_addr(int);
 char *get_sbuf_line(line_t *);
 int get_shell_command(void);
 int get_stream_line(FILE *);
-int get_tty_line(void);
+int get_tty_line(const char *);
+int get_tty_line_dumb();
 void handle_hup(int);
 void handle_int(int);
 void handle_winch(int);
@@ -255,6 +256,7 @@ extern int ibufsz;
 /* global flags */
 extern int isbinary;
 extern int isglobal;
+extern int istty;
 extern int modified;
 extern int mutex;
 extern int sigflags;

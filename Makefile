@@ -1,7 +1,7 @@
 PROGNAME=ned
 PREFIX?=/usr/local
 BINDIR=$(PREFIX)/bin
-OBJECTS=buf.o glbl.o io.o main.o re.o sub.o undo.o
+OBJECTS=buf.o glbl.o io.o main.o re.o sub.o undo.o linenoise.o
 CFLAGS+=-Wall -Wextra -pedantic -Werror
 LDFLAGS+=-lbsd
 

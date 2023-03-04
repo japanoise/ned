@@ -26,6 +26,9 @@
  * SUCH DAMAGE.
  */
 
+#include "linenoise.h"
+#include <stdlib.h>
+#include <unistd.h>
 #ifndef lint
 #if 0
 static const char copyright[] =
@@ -52,6 +55,7 @@ static const char copyright[] =
 
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <ctype.h>
 #include <locale.h>
 #include <pwd.h>
@@ -74,11 +78,13 @@ static int shcmdi;		/* shell command buffer index */
 char *ibuf;			/* ed command-line buffer */
 int ibufsz;			/* ed command-line buffer size */
 char *ibufp;			/* pointer to ed command-line buffer */
+static char ln_history[PATH_MAX]; /* History file */
 
 /* global flags */
 static int garrulous = 0;	/* if set, print all error messages */
 int isbinary;			/* if set, buffer contains ASCII NULs */
-int isglobal;			/* if set, doing a global command */
+int isglobal;                   /* if set, doing a global command */
+int istty;			/* if set, stdin is a tty */
 int modified;			/* if set, buffer modified since last write */
 int mutex = 0;			/* if set, signals set "sigflags" */
 static int red = 0;		/* if set, restrict shell/directory access */
@@ -95,12 +101,43 @@ static const char *dps = "*";	/* default command-line prompt */
 
 static const char *usage = "usage: %s [-] [-sx] [-p string] [file]\n";
 
+/* mkdir -p */
+static int mkpath(char* file_path, mode_t mode) {
+	for (char* p = strchr(file_path + 1, '/'); p; p = strchr(p + 1, '/')) {
+		*p = '\0';
+		if (mkdir(file_path, mode) == -1) {
+			if (errno != EEXIST) {
+				*p = '/';
+				return -1;
+			}
+		}
+		*p = '/';
+	}
+	return 0;
+}
+
+static void save_hist() {
+	int idx = strlen(ln_history);
+	/* XXX: the h of history */
+	while(ln_history[idx] != 'h') idx--;
+	ln_history[idx] = 0;
+	if (mkpath(ln_history, 0755)) {
+		perror(ln_history);
+	}
+	ln_history[idx] = 'h';
+	if (linenoiseHistorySave(ln_history)) {
+		perror(ln_history);
+	}
+}
+
 /* ed: line editor */
 int
 main(volatile int argc, char ** volatile argv)
 {
 	int c, n;
 	long status = 0;
+
+	istty = isatty(STDIN_FILENO);
 
 	(void)setlocale(LC_ALL, "");
 
@@ -167,14 +204,23 @@ top:
 				quit(2);
 		}
 	}
+
+	/* Handle linenoise history if in an interactive terminal */
+	if (istty) {
+		if (getenv("XDG_DATA_HOME")) {
+			sprintf(ln_history, "%s/ned/history",
+				getenv("XDG_DATA_HOME"));
+		} else {
+			sprintf(ln_history, "%s/.local/share/ned/history",
+				getenv("HOME"));
+		}
+		linenoiseHistoryLoad(ln_history);
+	}
+
 	for (;;) {
 		if (status < 0 && garrulous)
 			fprintf(stderr, "%s\n", errmsg);
-		if (prompt) {
-			printf("%s", prompt);
-			fflush(stdout);
-		}
-		if ((n = get_tty_line()) < 0) {
+		if ((n = get_tty_line(prompt ? prompt : "")) < 0) {
 			status = ERR;
 			continue;
 		} else if (n == 0) {
@@ -201,17 +247,24 @@ top:
 			status = ERR;
 			continue;
 		}
+
+		if (istty) {
+			linenoiseHistoryAdd(ibuf);
+			save_hist();
+		}
+
 		isglobal = 0;
 		if ((status = extract_addr_range()) >= 0 &&
 		    (status = exec_command()) >= 0)
 			if (!status ||
 			    (status = display_lines(current_addr, current_addr,
-			        status)) >= 0)
+						    status)) >= 0) {
 				continue;
+			}
 		switch (status) {
 		case EOF:
 			quit(0);
-                        break;
+			break;
 		case EMOD:
 			modified = 0;
 			fputs("?\n", stderr);		/* give warning */
@@ -231,7 +284,7 @@ top:
 			} else if (garrulous)
 				fprintf(stderr, "%s\n", errmsg);
 			quit(3);
-                        break;
+			break;
 		default:
 			fputs("?\n", stderr);
 			if (!isatty(0)) {
@@ -1026,7 +1079,7 @@ append_lines(long n)
 
 	for (current_addr = n;;) {
 		if (!isglobal) {
-			if ((l = get_tty_line()) < 0)
+			if ((l = get_tty_line("")) < 0)
 				return ERR;
 			else if (l == 0 || ibuf[l - 1] != '\n') {
 				clearerr(stdin);
