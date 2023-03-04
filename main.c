@@ -156,7 +156,7 @@ top:
 			break;
 
 		default:
-			fprintf(stderr, usage, red ? "red" : "ed");
+			fprintf(stderr, usage, red ? "nred" : "ned");
 			exit(1);
 		}
 	argv += optind;
