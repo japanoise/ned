@@ -495,6 +495,10 @@ exec_command(void)
 	static int sgflag = 0;
 	static long sgnum = 0;
 
+	static int browseflag = 0;
+	static int browsepage = 20;
+	static int browseback = 0;
+
 	pattern_t *tpat;
 	char *fnp;
 	int gflag = 0;
@@ -510,6 +514,39 @@ exec_command(void)
 		if (!isglobal) clear_undo_stack();
 		if (append_lines(second_addr) < 0)
 			return ERR;
+		break;
+	case 'b':
+		if (check_addr_range(current_addr, current_addr) < 0)
+			return ERR;
+		if (*ibufp == '+') {
+			browseback = 0;
+			ibufp++;
+		} else if (*ibufp == '-') {
+			browseback = 1;
+			ibufp++;
+		}
+		if ('0' <= *ibufp && *ibufp <= '9') {
+			browsepage = 0;
+			while ('0' <= *ibufp && *ibufp <= '9') {
+				browsepage *= 10;
+				browsepage += (*ibufp++)-'0';
+			}
+		}
+		GET_COMMAND_SUFFIX();
+		browseflag ^= gflag;
+		if (browseback) {
+			if (display_lines(second_addr-browsepage,
+					  second_addr, browseflag) < 0)
+				return ERR;
+			current_addr = second_addr-browsepage;
+		} else {
+			if (display_lines(second_addr,
+					  second_addr+browsepage,
+					  browseflag) < 0)
+				return ERR;
+			current_addr = second_addr+browsepage;
+		}
+		gflag = 0;
 		break;
 	case 'c':
 		if (check_addr_range(current_addr, current_addr) < 0)
