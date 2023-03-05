@@ -1,6 +1,7 @@
 PROGNAME=ned
 PREFIX?=/usr/local
 BINDIR=$(PREFIX)/bin
+MANDIR=$(PREFIX)/share/man/man1
 OBJECTS=buf.o glbl.o io.o main.o re.o sub.o undo.o linenoise.o
 CFLAGS+=-Wall -Wextra -pedantic -Werror
 LDFLAGS+=-lbsd
@@ -15,6 +16,7 @@ $(PROGNAME): $(OBJECTS)
 
 install: $(PROGNAME)
 	install -m 0755 $(PROGNAME) $(BINDIR)
+	install -m 0644 $(PROGNAME).1 $(MANDIR)
 
 clean:
 	rm -rf *.o
