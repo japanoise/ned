@@ -905,6 +905,14 @@ exec_command(void)
 		GET_COMMAND_SUFFIX();
 		errmsg = "crypt unavailable";
 		return ERR;
+	case 'X':
+		if (check_addr_range(current_addr, current_addr) < 0)
+			return ERR;
+		GET_COMMAND_SUFFIX();
+		if (hexdump_lines(first_addr, second_addr, gflag) < 0)
+			return ERR;
+		gflag = 0;
+		break;
 	case 'z':
 #ifdef BACKWARDS
 		if (check_addr_range(first_addr = 1, current_addr + 1) < 0)
@@ -1314,6 +1322,30 @@ display_lines(long from, long to, int gflag)
 		if ((s = get_sbuf_line(bp)) == NULL)
 			return ERR;
 		if (put_tty_line(s, bp->len, current_addr = from++, gflag) < 0)
+			return ERR;
+	}
+	return 0;
+}
+
+/* hexdump_lines: print a range of lines to stdout, in hexadecimal */
+int
+hexdump_lines(long from, long to, int gflag)
+{
+	line_t *bp;
+	line_t *ep;
+	char *s;
+
+	if (!from) {
+		errmsg = "invalid address";
+		return ERR;
+	}
+	ep = get_addressed_line_node(INC_MOD(to, addr_last));
+	bp = get_addressed_line_node(from);
+	for (; bp != ep; bp = bp->q_forw) {
+		if ((s = get_sbuf_line(bp)) == NULL)
+			return ERR;
+		if (put_tty_line_hex(
+			    s, bp->len, current_addr = from++, gflag) < 0)
 			return ERR;
 	}
 	return 0;

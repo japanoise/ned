@@ -384,3 +384,47 @@ put_tty_line(const char *s, int l, long n, int gflag)
 	putchar('\n');
 	return 0;
 }
+
+/* put_tty_line_hex: hexdump text to stdout */
+int
+put_tty_line_hex(const char *s, int l, long n, int gflag)
+{
+	int col = 0;
+	int lc = 0;
+	int first = 1;
+
+	if (gflag & GNP) {
+		printf("%ld\t", n);
+		col = 8;
+	}
+	for (; l--; s++) {
+		if ((gflag & GLS) && (col+=3-first) > cols) {
+			fputs("\\\n", stdout);
+			col = 1;
+			first = 1;
+#ifndef BACKWARDS
+			if (!scripted && !isglobal && ++lc > rows) {
+				lc = 0;
+				fputs("Press <RETURN> to continue... ", stdout);
+				fflush(stdout);
+				for(;;) {
+					int c = getchar();
+					if (c == EOF)
+						return ERR;
+					if (c == '\n')
+						break;
+				}
+			}
+#endif
+		}
+		if (first) first = 0;
+		else putchar(' ');
+		printf("%02x", *s);
+	}
+#ifndef BACKWARDS
+	if (gflag & GLS)
+		putchar('$');
+#endif
+	putchar('\n');
+	return 0;
+}
