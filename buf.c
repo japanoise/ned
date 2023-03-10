@@ -56,7 +56,8 @@ get_sbuf_line(line_t *lp)
 	if (sfseek != lp->seek) {
 		sfseek = lp->seek;
 		if (fseeko(sfp, sfseek, SEEK_SET) < 0) {
-			fprintf(stderr, "%s\n", strerror(errno));
+			fprintf(stderr, "%s", strerror(errno));
+			newline(stderr);
 			errmsg = "cannot seek temp file";
 			return NULL;
 		}
@@ -64,7 +65,8 @@ get_sbuf_line(line_t *lp)
 	len = lp->len;
 	REALLOC(sfbuf, sfbufsz, len + 1, NULL);
 	if (fread(sfbuf, sizeof(char), len, sfp) != len) {
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "cannot read temp file";
 		return NULL;
 	}
@@ -84,7 +86,8 @@ put_sbuf_line(const char *cs)
 	const char *s;
 
 	if ((lp = (line_t *) malloc(sizeof(line_t))) == NULL) {
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "out of memory";
 		return NULL;
 	}
@@ -100,7 +103,8 @@ put_sbuf_line(const char *cs)
 	/* out of position */
 	if (seek_write) {
 		if (fseeko(sfp, (off_t)0, SEEK_END) < 0) {
-			fprintf(stderr, "%s\n", strerror(errno));
+			fprintf(stderr, "%s", strerror(errno));
+			newline(stderr);
 			errmsg = "cannot seek temp file";
 			free(lp);
 			return NULL;
@@ -111,7 +115,8 @@ put_sbuf_line(const char *cs)
 	/* assert: SPL1() */
 	if (fwrite(cs, sizeof(char), len, sfp) != len) {
 		sfseek = -1;
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "cannot write temp file";
 		free(lp);
 		return NULL;
@@ -216,7 +221,8 @@ close_sbuf(void)
 {
 	if (sfp) {
 		if (fclose(sfp) < 0) {
-			fprintf(stderr, "%s: %s\n", sfn, strerror(errno));
+			fprintf(stderr, "%s: %s", sfn, strerror(errno));
+			newline(stderr);
 			errmsg = "cannot close temp file";
 			return ERR;
 		}

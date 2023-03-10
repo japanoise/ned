@@ -184,7 +184,9 @@ top:
 	if ((status = setjmp(env)))
 #endif
 	{
-		fputs("\n?\n", stderr);
+		newline(stderr);
+		fputc('?', stderr);
+		newline(stderr);
 		errmsg = "interrupt";
 	} else {
 		init_buffers();
@@ -197,7 +199,8 @@ top:
 				    >= sizeof(old_filename))
 					quit(2);
 		} else if (argc) {
-			fputs("?\n", stderr);
+			fputc('?', stderr);
+			newline(stderr);
 			if (**argv == '\0')
 				errmsg = "invalid filename";
 			if (!isatty(0))
@@ -218,14 +221,17 @@ top:
 	}
 
 	for (;;) {
-		if (status < 0 && garrulous)
-			fprintf(stderr, "%s\n", errmsg);
+		if (status < 0 && garrulous) {
+			fprintf(stderr, "%s", errmsg);
+			newline(stderr);
+		}
 		if ((n = get_tty_line(prompt ? prompt : "")) < 0) {
 			status = ERR;
 			continue;
 		} else if (n == 0) {
 			if (modified && !scripted) {
-				fputs("?\n", stderr);
+				fputc('?', stderr);
+				newline(stderr);
 				errmsg = "warning: file modified";
 				if (!isatty(0)) {
 					if (garrulous)
@@ -267,7 +273,8 @@ top:
 			break;
 		case EMOD:
 			modified = 0;
-			fputs("?\n", stderr);		/* give warning */
+			fputc('?', stderr);		/* give warning */
+			newline(stderr);
 			errmsg = "warning: file modified";
 			if (!isatty(0)) {
 				if (garrulous)
@@ -281,12 +288,15 @@ top:
 				if (garrulous)
 					fprintf(stderr, "script, line %d: %s\n",
 					    lineno, errmsg);
-			} else if (garrulous)
-				fprintf(stderr, "%s\n", errmsg);
+			} else if (garrulous) {
+				fprintf(stderr, "%s", errmsg);
+				newline(stderr);
+			}
 			quit(3);
 			break;
 		default:
-			fputs("?\n", stderr);
+			fputc('?', stderr);
+			newline(stderr);
 			if (!isatty(0)) {
 				if (garrulous)
 					fprintf(stderr, "script, line %d: %s\n",
@@ -618,7 +628,8 @@ exec_command(void)
 		GET_COMMAND_SUFFIX();
 		if (*fnp)
 			strlcpy(old_filename, fnp, PATH_MAX);
-		printf("%s\n", strip_escapes(old_filename));
+		printf("%s", strip_escapes(old_filename));
+		newline(stdout);
 		break;
 	case 'g':
 	case 'v':
@@ -643,7 +654,10 @@ exec_command(void)
 			return ERR;
 		}
 		GET_COMMAND_SUFFIX();
-		if (*errmsg) fprintf(stderr, "%s\n", errmsg);
+		if (*errmsg) {
+			fprintf(stderr, "%s", errmsg);
+			newline(stderr);
+		}
 		break;
 	case 'H':
 		if (addr_cnt > 0) {
@@ -651,8 +665,10 @@ exec_command(void)
 			return ERR;
 		}
 		GET_COMMAND_SUFFIX();
-		if ((garrulous = 1 - garrulous) && *errmsg)
-			fprintf(stderr, "%s\n", errmsg);
+		if ((garrulous = 1 - garrulous) && *errmsg) {
+			fprintf(stderr, "%s", errmsg);
+			newline(stderr);
+		}
 		break;
 	case 'i':
 		if (second_addr == 0) {
@@ -930,7 +946,8 @@ exec_command(void)
 		break;
 	case '=':
 		GET_COMMAND_SUFFIX();
-		printf("%ld\n", addr_cnt ? second_addr : addr_last);
+		printf("%ld", addr_cnt ? second_addr : addr_last);
+		newline(stdout);
 		break;
 	case '!':
 		if (addr_cnt > 0) {
@@ -939,9 +956,15 @@ exec_command(void)
 		} else if ((sflags = get_shell_command()) < 0)
 			return ERR;
 		GET_COMMAND_SUFFIX();
-		if (sflags) printf("%s\n", shcmd + 1);
+		if (sflags) {
+			printf("%s", shcmd + 1);
+			newline(stdout);
+		}
 		system(shcmd + 1);
-		if (!scripted) printf("!\n");
+		if (!scripted) {
+			printf("!");
+			newline(stdout);
+		}
 		break;
 	case '\n':
 #ifdef BACKWARDS
@@ -1024,8 +1047,10 @@ get_filename(void)
 			ibufp++;
 			if ((n = get_shell_command()) < 0)
 				return NULL;
-			if (n)
-				printf("%s\n", shcmd + 1);
+			if (n) {
+				printf("%s", shcmd + 1);
+				newline(stdout);
+			}
 			return shcmd;
 		} else if (n > PATH_MAX - 1) {
 			errmsg = "filename too long";
@@ -1404,7 +1429,8 @@ dup_line_node(line_t *lp)
 	line_t *np;
 
 	if ((np = (line_t *) malloc(sizeof(line_t))) == NULL) {
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "out of memory";
 		return NULL;
 	}
@@ -1526,4 +1552,14 @@ is_legal_filename(char *s)
 		return 0;
 	}
 	return 1;
+}
+
+/* Handle \r\n if terminal is in raw mode */
+void
+newline(FILE *stream)
+{
+	if (linenoiseInRawMode()) {
+		fputc('\r', stream);
+	}
+	fputc('\n', stream);
 }

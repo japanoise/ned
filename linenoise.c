@@ -1019,9 +1019,9 @@ static int linenoiseRaw(char *buf, size_t buflen, const char *prompt) {
 		return -1;
 	}
 
-	if (enableRawMode(STDIN_FILENO) == -1) return -1;
+	if (!rawmode && enableRawMode(STDIN_FILENO) == -1) return -1;
 	count = linenoiseEdit(STDIN_FILENO, STDOUT_FILENO, buf, buflen, prompt);
-	disableRawMode(STDIN_FILENO);
+	/* disableRawMode(STDIN_FILENO); */
 	/* Move to the left edge of the screen */
 	printf("\r");
 	fflush(stdout);
@@ -1243,4 +1243,8 @@ int linenoiseHistoryLoad(const char *filename) {
 	}
 	fclose(fp);
 	return 0;
+}
+
+int linenoiseInRawMode() {
+	return rawmode;
 }

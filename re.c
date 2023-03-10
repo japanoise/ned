@@ -57,7 +57,8 @@ get_compiled_pattern(void)
 	if (expr && !patlock)
 		regfree(expr);
 	else if ((expr = (pattern_t *) malloc(sizeof(pattern_t))) == NULL) {
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "out of memory";
 		return NULL;
 	}

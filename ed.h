@@ -122,14 +122,16 @@ if ((i) > (n)) { \
 	SPL1(); \
 	if ((b) != NULL) { \
 		if ((ts = (char *) realloc((b), ti += max((i), MINBUFSZ))) == NULL) { \
-			fprintf(stderr, "%s\n", strerror(errno)); \
+			fprintf(stderr, "%s", strerror(errno)); \
+			newline(stderr); \
 			errmsg = "out of memory"; \
 			SPL0(); \
 			return err; \
 		} \
 	} else { \
 		if ((ts = (char *) malloc(ti += max((i), MINBUFSZ))) == NULL) { \
-			fprintf(stderr, "%s\n", strerror(errno)); \
+			fprintf(stderr, "%s", strerror(errno)); \
+			newline(stderr); \
 			errmsg = "out of memory"; \
 			SPL0(); \
 			return err; \
@@ -147,7 +149,8 @@ if ((i) > (n)) { \
 	char *ts; \
 	SPL1(); \
 	if ((ts = (char *) realloc((b), ti += max((i), MINBUFSZ))) == NULL) { \
-		fprintf(stderr, "%s\n", strerror(errno)); \
+		fprintf(stderr, "%s", strerror(errno)); \
+		newline(stderr); \
 		errmsg = "out of memory"; \
 		SPL0(); \
 		return err; \
@@ -224,6 +227,7 @@ int is_legal_filename(char *);
 int join_lines(long, long);
 int mark_line_node(line_t *, int);
 int move_lines(long);
+void newline(FILE *stream);
 line_t *next_active_node(void);
 long next_addr(void);
 int open_sbuf(void);

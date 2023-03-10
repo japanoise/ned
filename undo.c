@@ -44,7 +44,8 @@ push_undo_stack(int type, long from, long to)
 #if defined(sun) || defined(NO_REALLOC_NULL)
 	if (ustack == NULL &&
 	    (ustack = (undo_t *) malloc((usize = USIZE) * sizeof(undo_t))) == NULL) {
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "out of memory";
 		return NULL;
 	}
@@ -59,7 +60,8 @@ push_undo_stack(int type, long from, long to)
 		return ustack + u_p++;
 	}
 	/* out of memory - release undo stack */
-	fprintf(stderr, "%s\n", strerror(errno));
+	fprintf(stderr, "%s", strerror(errno));
+	newline(stderr);
 	errmsg = "out of memory";
 	clear_undo_stack();
 	free(ustack);

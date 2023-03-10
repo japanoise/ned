@@ -42,22 +42,27 @@ read_file(char *fn, long n)
 
 	fp = (*fn == '!') ? popen(fn + 1, "r") : fopen(strip_escapes(fn), "r");
 	if (fp == NULL) {
-		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		fprintf(stderr, "%s: %s", fn, strerror(errno));
+		newline(stderr);
 		errmsg = "cannot open input file";
 		return ERR;
 	}
 	if ((size = read_stream(fp, n)) < 0) {
-		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		fprintf(stderr, "%s: %s", fn, strerror(errno));
+		newline(stderr);
 		errmsg = "error reading input file";
 	}
 	if ((cs = (*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
-		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		fprintf(stderr, "%s: %s", fn, strerror(errno));
+		newline(stderr);
 		errmsg = "cannot close input file";
 	}
 	if (size < 0 || cs < 0)
 		return ERR;
-	if (!scripted)
-		fprintf(stdout, "%lu\n", size);
+	if (!scripted) {
+		fprintf(stdout, "%lu", size);
+		newline(stdout);
+	}
 	return current_addr - n;
 }
 
@@ -96,10 +101,14 @@ read_stream(FILE *fp, long n)
 	}
 	if (len < 0)
 		return ERR;
-	if (appended && size && o_isbinary && o_newline_added)
-		fputs("newline inserted\n", stderr);
-	else if (newline_added && (!appended || (!isbinary && !o_isbinary)))
-		fputs("newline appended\n", stderr);
+	if (appended && size && o_isbinary && o_newline_added) {
+		fputs("newline inserted", stderr);
+		newline(stderr);
+	}
+	else if (newline_added && (!appended || (!isbinary && !o_isbinary))) {
+		fputs("newline appended", stderr);
+		newline(stderr);
+	}
 	if (isbinary && newline_added && !appended)
 		size += 1;
 	if (!size)
@@ -127,7 +136,8 @@ get_stream_line(FILE *fp)
 	if (c == '\n')
 		sbuf[i++] = c;
 	else if (ferror(fp)) {
-		fprintf(stderr, "%s\n", strerror(errno));
+		fprintf(stderr, "%s", strerror(errno));
+		newline(stderr);
 		errmsg = "cannot read input file";
 		return ERR;
 	} else if (i) {
@@ -149,22 +159,27 @@ write_file(char *fn, const char *mode, long n, long m)
 
 	fp = (*fn == '!') ? popen(fn+1, "w") : fopen(strip_escapes(fn), mode);
 	if (fp == NULL) {
-		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		fprintf(stderr, "%s: %s", fn, strerror(errno));
+		newline(stderr);
 		errmsg = "cannot open output file";
 		return ERR;
 	}
 	if ((size = write_stream(fp, n, m)) < 0) {
-		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		fprintf(stderr, "%s: %s", fn, strerror(errno));
+		newline(stderr);
 		errmsg = "error writing output file";
 	}
 	if ((cs = (*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
-		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		fprintf(stderr, "%s: %s", fn, strerror(errno));
+		newline(stderr);
 		errmsg = "cannot close output file";
 	}
 	if (size < 0 || cs < 0)
 		return ERR;
-	if (!scripted)
-		fprintf(stdout, "%lu\n", size);
+	if (!scripted) {
+		fprintf(stdout, "%lu", size);
+		newline(stdout);
+	}
 	return n ? m - n + 1 : 0;
 }
 
@@ -270,7 +285,8 @@ get_tty_line(const char *prompt)
 				return 0;
 			}
 
-			fprintf(stderr, "stdin: %s\n", strerror(errno));
+			fprintf(stderr, "stdin: %s", strerror(errno));
+			newline(stderr);
 			errmsg = "cannot read stdin";
 			clearerr(stdin);
 			ibufp = NULL;
@@ -306,7 +322,8 @@ int get_tty_line_dumb() {
 			return i;
 		case EOF:
 			if (ferror(stdin)) {
-				fprintf(stderr, "stdin: %s\n", strerror(errno));
+				fprintf(stderr, "stdin: %s", strerror(errno));
+				newline(stderr);
 				errmsg = "cannot read stdin";
 				clearerr(stdin);
 				ibufp = NULL;
@@ -341,7 +358,8 @@ put_tty_line(const char *s, int l, long n, int gflag)
 	}
 	for (; l--; s++) {
 		if ((gflag & GLS) && ++col > cols) {
-			fputs("\\\n", stdout);
+			fputs("\\", stdout);
+			newline(stdout);
 			col = 1;
 #ifndef BACKWARDS
 			if (!scripted && !isglobal && ++lc > rows) {
@@ -381,7 +399,7 @@ put_tty_line(const char *s, int l, long n, int gflag)
 	if (gflag & GLS)
 		putchar('$');
 #endif
-	putchar('\n');
+	newline(stdout);
 	return 0;
 }
 
@@ -399,7 +417,8 @@ put_tty_line_hex(const char *s, int l, long n, int gflag)
 	}
 	for (; l--; s++) {
 		if ((gflag & GLS) && (col+=3-first) > cols) {
-			fputs("\\\n", stdout);
+			fputs("\\", stdout);
+			newline(stdout);
 			col = 1;
 			first = 1;
 #ifndef BACKWARDS
@@ -425,6 +444,6 @@ put_tty_line_hex(const char *s, int l, long n, int gflag)
 	if (gflag & GLS)
 		putchar('$');
 #endif
-	putchar('\n');
+	newline(stdout);
 	return 0;
 }
