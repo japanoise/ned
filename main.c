@@ -27,7 +27,9 @@
  */
 
 #include "linenoise.h"
+#include <glob.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #ifndef lint
 #if 0
@@ -130,6 +132,121 @@ static void save_hist() {
 	}
 }
 
+/* Tab completion. Currently very stupid. */
+void
+completion(const char *buf, linenoiseCompletions *lc) {
+	int len = strlen(buf);
+	char cmd = 0;
+	int regex = 0;
+	int escape = 0;
+	int i = 0;
+
+	/* Skip whitespace & addresses */
+	while (i < len) {
+		if (escape) {
+			escape = 0;
+			i++;
+			continue;
+		}
+
+		if (regex) {
+			if (buf[i] == regex) {
+				regex = 0;
+			} else if (buf[i] == '\\') {
+				escape = 1;
+			}
+			i++;
+			continue;
+		}
+
+		switch (buf[i]) {
+		case '\'':
+		case '\\':
+			escape = 1;
+			break;
+		case '/':
+		case '?':
+			regex = buf[i];
+			break;
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		case ',':
+		case '.':
+		case '-':
+		case '^':
+		case '%':
+		case '+':
+		case '$':
+		case ' ':
+		case ';':
+		case '\t':
+			break;
+		default:
+			cmd = buf[i];
+			goto CMDFOUND;
+		}
+		i++;
+	}
+
+CMDFOUND:
+	if (!cmd)
+		return;
+	if (!(cmd=='e'||cmd=='E'||cmd=='f'||cmd=='r'||cmd=='w'||cmd=='W'))
+		return;
+
+	i++;
+	if (cmd=='w' && buf[i]=='q')
+		i++;
+	while (i < len) {
+		/* We can't autocomplete on commands */
+		if (buf[i] == '!')
+			return;
+		if (buf[i]!='\t' && buf[i]!=' ')
+			break;
+		i++;
+	}
+
+	if (i > len)
+		return;
+
+	char *globby = calloc(len+2, 1);
+	strcpy(globby, &buf[i]);
+	strcat(globby, "*");
+	glob_t globlist;
+
+#ifndef GLOB_TILDE
+	/* This isn't in POSIX, so define a fallback. */
+#define GLOB_TILDE 0
+#endif
+
+	if (glob(globby, GLOB_TILDE|GLOB_MARK, NULL, &globlist))
+		goto CLEANUP;
+
+	if (globlist.gl_pathc < 1)
+		goto CLEANUP;
+
+	for (size_t j = 0; j < globlist.gl_pathc; j++) {
+		char *candidateLine = calloc(
+			len + strlen(globlist.gl_pathv[j]) + 1, 1);
+		strcat(candidateLine, buf);
+		strcpy(&candidateLine[i], globlist.gl_pathv[j]);
+		linenoiseAddCompletion(lc, candidateLine);
+		free(candidateLine);
+	}
+
+CLEANUP:
+	globfree(&globlist);
+	free(globby);
+}
+
 /* ed: line editor */
 int
 main(volatile int argc, char ** volatile argv)
@@ -218,6 +335,8 @@ top:
 				getenv("HOME"));
 		}
 		linenoiseHistoryLoad(ln_history);
+		/* Also register the completion callback */
+		linenoiseSetCompletionCallback(completion);
 	}
 
 	for (;;) {
