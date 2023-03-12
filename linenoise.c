@@ -787,6 +787,37 @@ void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
 	refreshLine(l);
 }
 
+void linenoiseEditDeleteNextWord(struct linenoiseState *l) {
+	size_t old_pos = l->pos;
+	size_t diff;
+
+	while (l->pos < l->len && l->buf[l->pos] == ' ')
+		l->pos++;
+	while (l->pos < l->len && l->buf[l->pos] != ' ')
+		l->pos++;
+	diff = l->pos - old_pos;
+	memmove(l->buf+old_pos,l->buf+l->pos,l->len-l->pos+1);
+	l->pos = old_pos;
+	l->len -= diff;
+	refreshLine(l);
+}
+
+void linenoiseEditMoveBackWord(struct linenoiseState *l) {
+	while (l->pos > 0 && l->buf[l->pos-1] == ' ')
+		l->pos--;
+	while (l->pos > 0 && l->buf[l->pos-1] != ' ')
+		l->pos--;
+	refreshLine(l);
+}
+
+void linenoiseEditMoveForeWord(struct linenoiseState *l) {
+	while (l->pos < l->len && l->buf[l->pos] == ' ')
+		l->pos++;
+	while (l->pos < l->len && l->buf[l->pos] != ' ')
+		l->pos++;
+	refreshLine(l);
+}
+
 /* This function is the core of the line editing capability of linenoise.
  * It expects 'fd' to be already in "raw mode" so that every key pressed
  * will be returned ASAP to read().
@@ -899,10 +930,32 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
 			linenoiseEditHistoryNext(&l, LINENOISE_HISTORY_NEXT);
 			break;
 		case ESC:    /* escape sequence */
-			/* Read the next two bytes representing the escape sequence.
-			 * Use two calls to handle slow terminals returning the two
-			 * chars at different times. */
+			/* First byte */
 			if (read(l.ifd,seq,1) == -1) break;
+			/* Alt-keys */
+			switch (seq[0]) {
+			case 8:
+			case BACKSPACE:
+				linenoiseEditDeletePrevWord(&l);
+				continue;
+				break;
+			case 'b':
+			case 'B':
+				linenoiseEditMoveBackWord(&l);
+				continue;
+				break;
+			case 'd':
+			case 'D':
+				linenoiseEditDeleteNextWord(&l);
+				continue;
+				break;
+			case 'f':
+			case 'F':
+				linenoiseEditMoveForeWord(&l);
+				continue;
+				break;
+			}
+			/* Second byte of sequence */
 			if (read(l.ifd,seq+1,1) == -1) break;
 
 			/* ESC [ sequences. */
