@@ -38,7 +38,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __linux__
 #include <bsd/string.h>
+#endif
 
 #define ERR		(-2)
 #define EMOD		(-3)

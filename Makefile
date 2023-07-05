@@ -4,7 +4,12 @@ BINDIR=$(PREFIX)/bin
 MANDIR=$(PREFIX)/share/man/man1
 OBJECTS=buf.o glbl.o io.o main.o re.o sub.o undo.o linenoise.o
 CFLAGS+=-Wall -Wextra -pedantic -Werror
+
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
 LDFLAGS+=-lbsd
+endif
 
 all: $(PROGNAME)
 
